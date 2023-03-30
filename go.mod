@@ -1,4 +1,4 @@
-module postgres_object
+module github.com/mathisve/postgresStore
 
 go 1.18
 
