@@ -2,7 +2,10 @@ module postgres-image
 
 go 1.18
 
-require github.com/go-pg/pg/v10 v10.11.0
+require (
+	github.com/go-pg/pg/v10 v10.11.0
+	github.com/lib/pq v1.10.7
+)
 
 require (
 	github.com/go-pg/zerochecker v0.2.0 // indirect

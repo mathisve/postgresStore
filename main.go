@@ -1,94 +1,148 @@
 package main
 
 import (
+	"errors"
 	"log"
-	"os"
 
-	"github.com/go-pg/pg/v10"
-	"github.com/go-pg/pg/v10/orm"
+	"database/sql"
+
+	_ "github.com/lib/pq"
 )
 
-const PART_SIZE = 1000
-const FILENAME = "/Users/mathis/Downloads/AIS_2021_12_15.zip"
+var db *sql.DB
 
-var db *pg.DB
-
-type Part struct {
-	Filename string
-	PartNum  int
-	Data     []byte
+type Object struct {
+	ObjectName string
+	Bytes      []byte
+	ByteSize   int
 }
 
 func init() {
-	db = pg.Connect(&pg.Options{
-		Addr:     "localhost:5432",
-		User:     "postgres",
-		Password: "admin",
-	})
-
-	err := createSchema(db)
+	connStr := "host=localhost port=5432 user=postgres password=password dbname=postgres sslmode=disable"
+	var err error
+	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		log.Panic(err)
 	}
+
+	err = CreateSchema(db)
+	if err != nil {
+		log.Panic(err)
+	}
+
 }
 
 func main() {
-	data, err := os.ReadFile(FILENAME)
-	if err != nil {
-		log.Panic(err)
-	}
+	// var filenames = []string{"./files/eks.png", "./files/file.txt", "./files/lofi-music.mp3"}
 
-	dataLen := len(data)
+	// for _, file := range filenames {
+	// 	data, err := os.ReadFile(file)
+	// 	if err != nil {
+	// 		log.Panic(err)
+	// 	}
 
-	parts := dataLen / PART_SIZE
+	// 	s := Object{
+	// 		ObjectName: file,
+	// 		Bytes:      data,
+	// 		ByteSize:   len(data),
+	// 	}
 
-	for i := 0; i < parts; i++ {
-		log.Println(len(data[PART_SIZE*i : PART_SIZE*(i+1)]))
+	// 	insertObject(db, s)
+	// }
 
-		part := Part{
-			Filename: FILENAME,
-			PartNum:  i,
-			Data:     data[PART_SIZE*i : PART_SIZE*(i+1)],
-		}
-
-		insertInDB(db, &part)
-	}
-
-	log.Println(len(data[PART_SIZE*parts : dataLen]))
-	part := Part{
-
-		Filename: FILENAME,
-		PartNum:  parts,
-		Data:     data[PART_SIZE*parts : dataLen],
-	}
-
-	insertInDB(db, &part)
-}
-
-func insertInDB(db *pg.DB, part *Part) {
-	result, err := db.Model(part).Insert()
+	objects, err := ListObjects(db)
 	if err != nil {
 		log.Println(err)
 	}
 
-	log.Println(result.RowsAffected())
+	for _, obj := range objects {
+		log.Println(obj)
+	}
+
+	// var c int
+	// for {
+	// 	for _, file := range filenames {
+	// 		_, err := RetrieveObject(db, file)
+	// 		if err != nil {
+	// 			log.Panic(err)
+	// 		}
+
+	// 	}
+
+	// 	c += 1
+	// 	log.Println(c)
+	// }
+
+	// os.WriteFile("./files/new_eks.png", data, 0644)
 
 }
 
-func createSchema(db *pg.DB) error {
-	models := []interface{}{
-		(*Part)(nil),
+func InsertObject(db *sql.DB, o Object) error {
+	_, err := db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)", o.ObjectName, o.Bytes, o.ByteSize)
+	if err != nil {
+		return err
 	}
 
-	for _, model := range models {
-		err := db.Model(model).CreateTable(&orm.CreateTableOptions{
-			IfNotExists: true,
-		})
+	return err
+}
 
+func RetrieveObject(db *sql.DB, objectName string) (b []byte, err error) {
+	row := db.QueryRow("SELECT bytes FROM object WHERE object_name = $1", objectName)
+	err = row.Scan(&b)
+	if err != nil {
+		return b, err
+	}
+
+	return b, err
+}
+
+func DeleteObject(db *sql.DB, objectName string) (err error) {
+	res, err := db.Exec("DROP FROM object WHERE object_name = $1", objectName)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		err = errors.New("no objects deleted")
+	}
+
+	return err
+}
+
+func ListObjects(db *sql.DB) (objects []string, err error) {
+	rows, err := db.Query("SELECT object_name FROM object")
+	if err != nil {
+		return objects, err
+	}
+
+	for rows.Next() {
+		var object_name string
+		err = rows.Scan(&object_name)
 		if err != nil {
-			return err
+			log.Println(err)
 		}
+
+		objects = append(objects, object_name)
 	}
 
-	return nil
+	return objects, err
+}
+
+func CreateSchema(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS object (
+		id SERIAL PRIMARY KEY,
+		object_name TEXT UNIQUE NOT NULL,
+		uploaded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		bytes BYTEA NOT NULL,
+		byte_size INT NOT NULL
+	);
+	
+	ALTER TABLE object ALTER bytes SET STORAGE EXTERNAL`)
+
+	return err
 }
