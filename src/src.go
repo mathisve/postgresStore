@@ -1,14 +1,11 @@
 package src
 
 import (
-	"database/sql"
 	"errors"
 	"log"
 
 	_ "github.com/lib/pq"
 )
-
-var db *sql.DB
 
 type Object struct {
 	ObjectName string
