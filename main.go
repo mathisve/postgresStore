@@ -4,91 +4,59 @@ import (
 	"log"
 	"os"
 
-	"github.com/go-pg/pg/v10"
-	"github.com/go-pg/pg/v10/orm"
+	po "postgres_object/src"
 )
 
-const PART_SIZE = 1000
-const FILENAME = "/Users/mathis/Downloads/AIS_2021_12_15.zip"
-
-var db *pg.DB
-
-type Part struct {
-	Filename string
-	PartNum  int
-	Data     []byte
-}
-
-func init() {
-	db = pg.Connect(&pg.Options{
-		Addr:     "localhost:5432",
-		User:     "postgres",
-		Password: "admin",
-	})
-
-	err := createSchema(db)
-	if err != nil {
-		log.Panic(err)
-	}
-}
-
 func main() {
-	data, err := os.ReadFile(FILENAME)
+	// create new connection
+	c, err := po.NewConnection(po.DefaultConnectionConfig)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	dataLen := len(data)
+	var filenames = []string{"./etc/files/eks.png", "./etc/files/file.txt", "./etc/files/lofi-music.mp3"}
 
-	parts := dataLen / PART_SIZE
-
-	for i := 0; i < parts; i++ {
-		log.Println(len(data[PART_SIZE*i : PART_SIZE*(i+1)]))
-
-		part := Part{
-			Filename: FILENAME,
-			PartNum:  i,
-			Data:     data[PART_SIZE*i : PART_SIZE*(i+1)],
+	for _, file := range filenames {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			log.Panic(err)
 		}
 
-		insertInDB(db, &part)
+		s := po.Object{
+			ObjectName: file,
+			Bytes:      data,
+			ByteSize:   len(data),
+		}
+
+		err = c.InsertObject(s)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
-	log.Println(len(data[PART_SIZE*parts : dataLen]))
-	part := Part{
-
-		Filename: FILENAME,
-		PartNum:  parts,
-		Data:     data[PART_SIZE*parts : dataLen],
-	}
-
-	insertInDB(db, &part)
-}
-
-func insertInDB(db *pg.DB, part *Part) {
-	result, err := db.Model(part).Insert()
+	objects, err := c.ListObjects()
 	if err != nil {
 		log.Println(err)
 	}
 
-	log.Println(result.RowsAffected())
-
-}
-
-func createSchema(db *pg.DB) error {
-	models := []interface{}{
-		(*Part)(nil),
+	for _, obj := range objects {
+		log.Println(obj)
 	}
 
-	for _, model := range models {
-		err := db.Model(model).CreateTable(&orm.CreateTableOptions{
-			IfNotExists: true,
-		})
+	// var c int
+	// for {
+	// 	for _, file := range filenames {
+	// 		_, err := RetrieveObject(db, file)
+	// 		if err != nil {
+	// 			log.Panic(err)
+	// 		}
 
-		if err != nil {
-			return err
-		}
-	}
+	// 	}
 
-	return nil
+	// 	c += 1
+	// 	log.Println(c)
+	// }
+
+	// os.WriteFile("./files/new_eks.png", data, 0644)
+
 }
