@@ -10,11 +10,15 @@ import (
 type Object struct {
 	ObjectName string
 	Bytes      []byte
-	ByteSize   int
 }
 
 func (c Connection) UploadObject(o Object) error {
-	_, err := c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3) ON CONFLICT (object_name) DO NOTHING", o.ObjectName, o.Bytes, o.ByteSize)
+	_, err := c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3) ON CONFLICT (object_name) DO NOTHING",
+		o.ObjectName,
+		o.Bytes,
+		len(o.Bytes),
+	)
+
 	if err != nil {
 		return err
 	}
