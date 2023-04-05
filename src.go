@@ -13,8 +13,8 @@ type Object struct {
 	ByteSize   int
 }
 
-func (c Connection) InsertObject(o Object) error {
-	_, err := c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3) ON CONFLICT (object_name) DO UPDATE SET updated = NOW()", o.ObjectName, o.Bytes, o.ByteSize)
+func (c Connection) UploadObject(o Object) error {
+	_, err := c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3) ON CONFLICT (object_name) DO NOTHING", o.ObjectName, o.Bytes, o.ByteSize)
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func (c Connection) InsertObject(o Object) error {
 	return err
 }
 
-func (c Connection) RetrieveObject(objectName string) (b []byte, err error) {
+func (c Connection) DownloadObject(objectName string) (b []byte, err error) {
 	row := c.db.QueryRow("SELECT bytes FROM object WHERE object_name = $1", objectName)
 	err = row.Scan(&b)
 	if err != nil {

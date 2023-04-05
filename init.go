@@ -7,5 +7,5 @@ import (
 )
 
 func init() {
-	log.Println("postgres-store running ...")
+	log.Println("postgresStore running ...")
 }

@@ -15,12 +15,15 @@ type ConnectionConfig struct {
 	DBName      string
 	SslMode     string
 	StorageMode string
+	ConnStr     string
 }
 
 type Connection struct {
 	db *sql.DB
 }
 
+// StorageMode
+// see createSchema function
 const (
 	StorageModeExtended = "EXTENDED"
 	StorageModeExternal = "EXTERNAL"
@@ -40,14 +43,20 @@ var DefaultConnectionConfig = ConnectionConfig{
 // takes in ConnectionConfig object which contains the connection configuration
 // returns Connection object, contains the db
 func NewConnection(config ConnectionConfig) (c Connection, err error) {
-	connStr := fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=%v",
-		config.Host,
-		config.Port,
-		config.Username,
-		config.Password,
-		config.DBName,
-		config.SslMode,
-	)
+	var connStr string
+
+	if config.ConnStr == "" {
+		connStr = fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=%v",
+			config.Host,
+			config.Port,
+			config.Username,
+			config.Password,
+			config.DBName,
+			config.SslMode,
+		)
+	} else {
+		connStr = config.ConnStr
+	}
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -70,7 +79,7 @@ func NewConnection(config ConnectionConfig) (c Connection, err error) {
 // storageMode string is used to alter the bytes storage mode in postgres
 // storageModeExtended means TOAST with compression
 // storageModeExternal means TOAST no compression
-// is not to be used outside the package (by the user)
+// is not to be used outside the package
 func createSchema(db *sql.DB, storageMode string) error {
 
 	ctx := context.Background()
