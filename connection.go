@@ -62,6 +62,12 @@ func NewConnection(config ConnectionConfig) (c Connection, err error) {
 	if err != nil {
 		return c, err
 	}
+
+	// leave it up to the user
+	// configure this in postgresql.conf
+	// max_connections param
+	db.SetMaxOpenConns(0)
+
 	log.Println("connected to db")
 
 	err = createSchema(db, config.StorageMode)
