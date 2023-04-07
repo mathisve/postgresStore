@@ -1,6 +1,8 @@
 package postgresStore
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"log"
 
@@ -13,17 +15,28 @@ type Object struct {
 }
 
 func (c Connection) UploadObject(o Object) error {
-	_, err := c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3) ON CONFLICT (object_name) DO NOTHING",
-		o.ObjectName,
-		o.Bytes,
-		len(o.Bytes),
-	)
+	ctx := context.Background()
+
+	tx, err := c.db.BeginTx(ctx, &sql.TxOptions{})
 
 	if err != nil {
 		return err
 	}
 
-	return err
+	stmt, err := tx.Prepare("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(o.ObjectName, o.Bytes, len(o.Bytes))
+
+	if err != nil {
+		err = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+
 }
 
 func (c Connection) DownloadObject(objectName string) (b []byte, err error) {
