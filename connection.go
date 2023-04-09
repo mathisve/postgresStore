@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 )
 
 type ConnectionConfig struct {
@@ -68,7 +67,7 @@ func NewConnection(config ConnectionConfig) (c Connection, err error) {
 	// max_connections param
 	db.SetMaxOpenConns(0)
 
-	log.Println("connected to db")
+	// log.Println("connected to db")
 
 	err = createSchema(db, config.StorageMode)
 	if err != nil {
