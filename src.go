@@ -1,8 +1,6 @@
 package postgresStore
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"log"
 
@@ -14,56 +12,21 @@ type Object struct {
 	Bytes      []byte
 }
 
-func (c Connection) UploadObject(o Object) error {
-	ctx := context.Background()
-
-	tx, err := c.db.BeginTx(ctx, &sql.TxOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)")
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(o.ObjectName, o.Bytes, len(o.Bytes))
-
-	if err != nil {
-		err = tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+func (c Connection) UploadObject(o Object) (err error) {
+	_, err = c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)", o.ObjectName, o.Bytes, len(o.Bytes))
+	return err
 
 }
 
 func (c Connection) DownloadObject(objectName string) (b []byte, err error) {
 	row := c.db.QueryRow("SELECT bytes FROM object WHERE object_name = $1", objectName)
 	err = row.Scan(&b)
-	if err != nil {
-		return b, err
-	}
 
 	return b, err
 }
 
 func (c Connection) DeleteObject(objectName string) (err error) {
-	res, err := c.db.Exec("DROP FROM object WHERE object_name = $1", objectName)
-	if err != nil {
-		return err
-	}
-
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
-		err = errors.New("no objects deleted")
-	}
-
+	_, err = c.db.Exec("DROP FROM object WHERE object_name = $1", objectName)
 	return err
 }
 
