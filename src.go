@@ -1,6 +1,7 @@
 package postgresStore
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -13,25 +14,38 @@ type Object struct {
 }
 
 func (c Connection) UploadObject(o Object) (err error) {
-	_, err = c.db.Exec("INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)", o.ObjectName, o.Bytes, len(o.Bytes))
+	ctx := context.Background()
+	defer ctx.Done()
+
+	_, err = c.db.ExecContext(ctx, "INSERT INTO object ( object_name, bytes, byte_size ) VALUES( $1, $2, $3)", o.ObjectName, o.Bytes, len(o.Bytes))
+
 	return err
 
 }
 
 func (c Connection) DownloadObject(objectName string) (b []byte, err error) {
-	row := c.db.QueryRow("SELECT bytes FROM object WHERE object_name = $1", objectName)
+	ctx := context.Background()
+	defer ctx.Done()
+
+	row := c.db.QueryRowContext(ctx, "SELECT bytes FROM object WHERE object_name = $1", objectName)
 	err = row.Scan(&b)
 
 	return b, err
 }
 
 func (c Connection) DeleteObject(objectName string) (err error) {
-	_, err = c.db.Exec("DROP FROM object WHERE object_name = $1", objectName)
+	ctx := context.Background()
+	defer ctx.Done()
+
+	_, err = c.db.ExecContext(ctx, "DROP FROM object WHERE object_name = $1", objectName)
 	return err
 }
 
 func (c Connection) ListObjects() (objects []string, err error) {
-	rows, err := c.db.Query("SELECT object_name FROM object")
+	ctx := context.Background()
+	defer ctx.Done()
+
+	rows, err := c.db.QueryContext(ctx, "SELECT object_name FROM object")
 	if err != nil {
 		return objects, err
 	}
