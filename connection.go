@@ -94,7 +94,7 @@ func createSchema(db *sql.DB, storageMode string) error {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS object (
+	_, err = tx.ExecContext(ctx, `CREATE UNLOGGED TABLE IF NOT EXISTS object (
 		id SERIAL PRIMARY KEY,
 		object_name TEXT UNIQUE NOT NULL,
 		uploaded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
