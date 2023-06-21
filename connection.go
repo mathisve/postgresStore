@@ -39,8 +39,8 @@ var DefaultConnectionConfig = ConnectionConfig{
 }
 
 // NewConnection is used to create a connection to the Postgres database
-// takes in ConnectionConfig object which contains the connection configuration
-// returns Connection object, contains the db
+// takes in ConnectionConfig object which contains the connection configuration.
+// returns Connection object, contains the db object.
 func NewConnection(config ConnectionConfig) (c Connection, err error) {
 	var connStr string
 
