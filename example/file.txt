@@ -1,0 +1,7 @@
+Hello!
+
+This is a text file that will be stored in the Postgres database!
+Yay!
+
+Kind regards,
+Mathis.
