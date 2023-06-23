@@ -14,29 +14,25 @@ const (
 func main() {
 
 	// create connection
-	c, err := postgresStore.NewConnection(postgresStore.DefaultConnectionConfig)
+	c, err := postgresStore.NewConnection(postgresStore.DefaultConnectionConfig.SetUnlogged(true))
 	if err != nil {
 		log.Println(err)
 	}
 
 	// open file
-	file, err := os.Open(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		log.Println(err)
 	}
 
-	// read file
-	var data []byte
-	_, err = file.Read(data)
-	if err != nil {
-		log.Println(err)
-	}
+	log.Println(data)
 
 	// upload objects
 	err = c.UploadObject(postgresStore.Object{
 		ObjectName: filename,
 		Bytes:      data,
 	})
+
 	if err != nil {
 		log.Println(err)
 	}
