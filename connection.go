@@ -6,36 +6,8 @@ import (
 	"fmt"
 )
 
-type ConnectionConfig struct {
-	Host        string
-	Port        int
-	Username    string
-	Password    string
-	DBName      string
-	SslMode     string
-	StorageMode string
-	ConnStr     string
-}
-
 type Connection struct {
 	db *sql.DB
-}
-
-// StorageMode
-// see createSchema function
-const (
-	StorageModeExtended = "EXTENDED"
-	StorageModeExternal = "EXTERNAL"
-)
-
-var DefaultConnectionConfig = ConnectionConfig{
-	Host:        "localhost",
-	Port:        5432,
-	Username:    "postgres",
-	Password:    "password",
-	DBName:      "postgres",
-	SslMode:     "disable",
-	StorageMode: StorageModeExtended,
 }
 
 // NewConnection is used to create a connection to the Postgres database
@@ -69,7 +41,7 @@ func NewConnection(config ConnectionConfig) (c Connection, err error) {
 
 	// log.Println("connected to db")
 
-	err = createSchema(db, config.StorageMode)
+	err = createSchema(db, config)
 	if err != nil {
 		return c, err
 	}
@@ -85,7 +57,7 @@ func NewConnection(config ConnectionConfig) (c Connection, err error) {
 // storageModeExtended means TOAST with compression
 // storageModeExternal means TOAST no compression
 // is not to be used outside the package
-func createSchema(db *sql.DB, storageMode string) error {
+func createSchema(db *sql.DB, c ConnectionConfig) error {
 
 	ctx := context.Background()
 
@@ -94,15 +66,28 @@ func createSchema(db *sql.DB, storageMode string) error {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `CREATE UNLOGGED TABLE IF NOT EXISTS object (
-		id SERIAL PRIMARY KEY,
-		object_name TEXT UNIQUE NOT NULL,
-		uploaded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-		bytes BYTEA NOT NULL,
-		byte_size INT NOT NULL);`)
-	if err != nil {
-		return err
+	if c.Unlogged {
+		_, err = tx.ExecContext(ctx, `CREATE UNLOGGED TABLE IF NOT EXISTS object (
+			id SERIAL PRIMARY KEY,
+			object_name TEXT UNIQUE NOT NULL,
+			uploaded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			bytes BYTEA NOT NULL,
+			byte_size INT NOT NULL);`)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS object (
+			id SERIAL PRIMARY KEY,
+			object_name TEXT UNIQUE NOT NULL,
+			uploaded TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			bytes BYTEA NOT NULL,
+			byte_size INT NOT NULL);`)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = tx.ExecContext(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS object_name_idx ON object(object_name);`)
@@ -110,7 +95,7 @@ func createSchema(db *sql.DB, storageMode string) error {
 		return err
 	}
 
-	if storageMode == StorageModeExtended {
+	if c.StorageMode == StorageModeExtended {
 		_, err = tx.ExecContext(ctx, `ALTER TABLE object ALTER bytes SET STORAGE EXTENDED`)
 	} else {
 		_, err = tx.ExecContext(ctx, `ALTER TABLE object ALTER bytes SET STORAGE EXTERNAL`)
